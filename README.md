@@ -1,6 +1,7 @@
 # EMOBase documentation
 
-Cross-repository documentation for EMOBase deployments.
+Cross-repository documentation for EMOBase deployments. Each server runs its
+own `emobase-infra` for the portal and species stacks deployed there.
 
 | Document | Contents |
 | --- | --- |
@@ -10,7 +11,7 @@ Cross-repository documentation for EMOBase deployments.
 
 | Repository | Purpose |
 | --- | --- |
-| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | Shared MySQL and Keycloak |
+| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | MySQL and Keycloak, one stack per server |
 | [`emobase-portal-deploy`](https://github.com/EMOBase/emobase-portal-deploy) | Multi-species portal, genomics API, JBrowse2 and BLAST |
 | [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) | Single-species UI, Directus and species services (`dev` branch) |
 | [`emobase-portal-web`](https://github.com/EMOBase/emobase-portal-web) | Portal web UI image source |
