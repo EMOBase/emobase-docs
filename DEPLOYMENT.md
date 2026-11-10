@@ -18,10 +18,9 @@ It provides one MySQL and one Keycloak for every stack on that server. Deploy
 the local infrastructure first, then the portal (if present), then the species
 stacks.
 
-Keycloak has its own browser-facing URL (`KEYCLOAK_PUBLIC_URL`), so species
-authentication does not depend on the portal. The species UI still reads
-genomics, JBrowse2 and BLAST from a portal, so that portal must be reachable
-and have a READY release.
+Keycloak is reachable at `KEYCLOAK_PUBLIC_URL`. The species UI reads
+genomics, JBrowse2 and BLAST from a portal; that portal must be reachable and
+have a READY release.
 
 Within one server, the portal and species stacks share the local
 `emobase-infra` Docker network. Across servers, each server has its own
@@ -334,10 +333,9 @@ Check that both services are healthy:
 docker compose ps
 ```
 
-Keycloak is published on `KEYCLOAK_HOST_PORT` (default `8081`) and should be
-reached by browsers at `KEYCLOAK_PUBLIC_URL`. The admin console is at
-`https://auth.example.org/keycloak/admin/`. The portal no longer proxies
-Keycloak.
+Keycloak is published on `KEYCLOAK_HOST_PORT` (default `8081`) and reached by
+browsers at `KEYCLOAK_PUBLIC_URL`. The admin console is at
+`https://auth.example.org/keycloak/admin/`.
 
 ## 5. Deploy the portal
 
@@ -387,7 +385,7 @@ returns `500` because tables such as `versions` do not exist yet.
 `/blast/` may return `502` at this point. That is expected until the first
 release has built BLAST databases; the smoke test only warns about it.
 
-**The portal is now the source of `PORTAL_SERVER`.** Read it from its `.env`:
+The portal's `PUBLIC_SERVER` is the value species stacks use as `PORTAL_SERVER`:
 
 ```bash
 grep '^PUBLIC_SERVER=' ~/emobase/emobase-portal-deploy/.env
