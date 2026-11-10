@@ -77,9 +77,9 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    ```
 
    This writes `PORTAL_PUBLIC_SERVER=http://localhost:9080`,
-   `KEYCLOAK_PUBLIC_URL=http://localhost:8081/ibb/keycloak` and the shared
+   `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the shared
    MySQL/Keycloak secrets. Keycloak admin is at
-   `http://localhost:8081/ibb/keycloak/admin/`.
+   `http://localhost:8081/keycloak/admin/`.
 
 2. Portal. Its `init.sh` reads the shared secrets and Keycloak URLs from
    `../emobase-infra/.env`:
@@ -116,12 +116,12 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    PUBLIC_SERVER=http://localhost:9090
    PORTAL_SERVER=http://localhost:9080
    PORTAL_INTERNAL_URL=http://host.docker.internal:9080
-   KEYCLOAK_PUBLIC_URL=http://localhost:8081/ibb/keycloak
+   KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak
    DIRECTUS_DB_DATABASE=directus_tcas
    ```
 
    Open `http://localhost:9090`. Sign-in redirects to
-   `http://localhost:8081/ibb/keycloak/...`, not to the portal.
+   `http://localhost:8081/keycloak/...`, not to the portal.
 
    > **Note**
    >
@@ -153,7 +153,7 @@ cd emobase-infra
 docker compose down -v
 ./init.sh \
   --portal-server http://192.168.1.10:9080 \
-  --keycloak-public-url http://192.168.1.10:8081/ibb/keycloak -f
+  --keycloak-public-url http://192.168.1.10:8081/keycloak -f
 docker compose up -d --wait
 
 cd ../emobase-portal-deploy
@@ -261,7 +261,7 @@ Two common layouts:
 
 | Site | URL | Env file |
 | --- | --- | --- |
-| Keycloak | `http://SERVER_IP:8081/ibb/keycloak` | `emobase-infra/.env`: `KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_HOST_PORT=8081` |
+| Keycloak | `http://SERVER_IP:8081/keycloak` | `emobase-infra/.env`: `KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_HOST_PORT=8081` |
 | Portal | `http://SERVER_IP:9080` | `emobase-infra/.env`: `PORTAL_PUBLIC_SERVER`<br>`emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9080` |
 | Species | `http://SERVER_IP:9090` | `emobase-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9090` |
 
@@ -279,7 +279,7 @@ Example with three DNS names:
 
 | Site | Public URL | Proxy target |
 | --- | --- | --- |
-| Keycloak | `https://auth.example.org/ibb/keycloak` | `http://127.0.0.1:8081` |
+| Keycloak | `https://auth.example.org/keycloak` | `http://127.0.0.1:8081` |
 | Portal | `https://portal.example.org` | `http://127.0.0.1:9080` |
 | Species | `https://tcas.example.org` | `http://127.0.0.1:9090` |
 
@@ -304,7 +304,8 @@ With nginx, proxy to the same ports and forward `Host`, `X-Forwarded-Host`,
 forwarded headers. Set `KEYCLOAK_PUBLIC_URL` to the public auth URL.
 
 The portal URL must be reachable from a species server, not just from the
-browser, because the species nginx proxies `/ibb/blast/` to it. Keycloak and
+browser, because the species nginx proxies its `/ibb/blast/` path to the
+portal's `/blast/`. Keycloak and
 MySQL are **not** shared across servers: each server runs its own
 `emobase-infra`. When both stacks are on the same server, set
 `PORTAL_INTERNAL_URL` to `http://host.docker.internal:9080` (or another
@@ -317,7 +318,7 @@ BLAST traffic internal; otherwise it defaults to `PORTAL_SERVER`.
 cd ~/emobase/emobase-infra
 ./init.sh \
   --portal-server https://portal.example.org \
-  --keycloak-public-url https://auth.example.org/ibb/keycloak
+  --keycloak-public-url https://auth.example.org/keycloak
 docker compose up -d --wait
 ```
 
@@ -335,7 +336,7 @@ docker compose ps
 
 Keycloak is published on `KEYCLOAK_HOST_PORT` (default `8081`) and should be
 reached by browsers at `KEYCLOAK_PUBLIC_URL`. The admin console is at
-`https://auth.example.org/ibb/keycloak/admin/`. The portal no longer proxies
+`https://auth.example.org/keycloak/admin/`. The portal no longer proxies
 Keycloak.
 
 ## 5. Deploy the portal
@@ -383,7 +384,7 @@ Open `PUBLIC_SERVER` in a browser. Keycloak admin is at
 The migrations must run before the portal UI is used. Without them the API
 returns `500` because tables such as `versions` do not exist yet.
 
-`/ibb/blast/` may return `502` at this point. That is expected until the first
+`/blast/` may return `502` at this point. That is expected until the first
 release has built BLAST databases; the smoke test only warns about it.
 
 **The portal is now the source of `PORTAL_SERVER`.** Read it from its `.env`:
@@ -402,7 +403,7 @@ per-species Directus database:
 | `PUBLIC_SERVER` | The URL users open for **this species site** | e.g. `https://tcas.example.org` |
 | `PORTAL_SERVER` | Public portal URL used by browser links | the portal's `PUBLIC_SERVER`, e.g. `https://portal.example.org` |
 | `PORTAL_INTERNAL_URL` | Portal URL used inside containers | e.g. `http://host.docker.internal:9080` on the same host |
-| `KEYCLOAK_PUBLIC_URL` | Local Keycloak public URL (from infra) | e.g. `https://auth.example.org/ibb/keycloak` |
+| `KEYCLOAK_PUBLIC_URL` | Local Keycloak public URL (from infra) | e.g. `https://auth.example.org/keycloak` |
 | `KEYCLOAK_REALM` | Shared portal realm or a dedicated species realm | `ibb` or `ibb_tcas` |
 | `DIRECTUS_DB_DATABASE` | This species' database in the local MySQL | e.g. `directus_tcas` |
 
@@ -599,7 +600,7 @@ To add a server:
 6. Make sure the species server can reach the portal:
 
    ```bash
-   curl -fsS https://portal.example.org/ibb/api/genomicsservice/v1/public/versions?status=READY >/dev/null
+   curl -fsS https://portal.example.org/api/genomicsservice/v1/public/versions?status=READY >/dev/null
    ```
 
 The reverse direction is **not** supported: the portal does not call the
@@ -616,7 +617,7 @@ BLAST and its own local infra for MySQL/Keycloak.
 | Keycloak redirects to the wrong host | `KEYCLOAK_PUBLIC_URL` does not match the URL exposed by the TLS proxy or host port |
 | Species login says invalid redirect URI | Shared realm only: register the origin with `emobase-infra/scripts/allow-origin.sh https://tcas.example.org`. A dedicated realm is configured by `init.sh`. |
 | Species site has no data | Portal needs a READY release; species `.env` `PORTAL_SERVER` must match the portal URL |
-| BLAST `502` | Expected until a release has built BLAST databases; check `/ibb/blast/searchdata.json` |
+| BLAST `502` | Expected until a release has built BLAST databases; check `/blast/searchdata.json` |
 | JBrowse2 empty | The release's JBrowse2 jobs must have completed; check worker logs |
 | `port is already allocated` | Change `HTTP_PORT` (and `PUBLIC_SERVER` if it contains the port) |
 | Image pull denied | `docker login ghcr.io` with `read:packages`; or make the package public |
