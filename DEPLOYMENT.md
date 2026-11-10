@@ -7,7 +7,7 @@ repositories:
 | --- | --- | --- |
 | [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | Shared MySQL and Keycloak (shared portal realm plus optional dedicated species realms) | none (Docker network only) |
 | [`emobase-portal-deploy`](https://github.com/EMOBase/emobase-portal-deploy) | Portal UI, genomics API/workers, Elasticsearch, JBrowse2, BLAST | `9080` |
-| [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy) | Single-species UI, its own Elasticsearch and Directus (`dev` branch) | `9090` |
+| [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) | Single-species UI, its own Elasticsearch and Directus (`dev` branch) | `9090` |
 
 Each repository's own README documents its services, environment variables and
 stack-specific maintenance. This guide covers the cross-repository deployment
