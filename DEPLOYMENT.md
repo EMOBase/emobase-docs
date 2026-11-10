@@ -304,8 +304,8 @@ With nginx, proxy to the same ports and forward `Host`, `X-Forwarded-Host`,
 forwarded headers. Set `KEYCLOAK_PUBLIC_URL` to the public auth URL.
 
 The portal URL must be reachable from a species server, not just from the
-browser, because the species nginx proxies its `/ibb/blast/` path to the
-portal's `/blast/`. Keycloak and
+browser, because the species nginx proxies `/blast/` to the portal's `/blast/`.
+Keycloak and
 MySQL are **not** shared across servers: each server runs its own
 `emobase-infra`. When both stacks are on the same server, set
 `PORTAL_INTERNAL_URL` to `http://host.docker.internal:9080` (or another
