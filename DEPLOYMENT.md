@@ -371,6 +371,14 @@ docker compose --profile update run --rm migrate-genomics-es
 docker compose up -d --wait
 ```
 
+> **Reusing a Docker host?** Compose volumes are global to the project name,
+> not to the checkout directory. If `emobase-portal_jbrowse2-data` exists from
+> an earlier run, `jbrowse create /web` fails because `/web` is not empty.
+> Remove that volume (`docker volume rm emobase-portal_jbrowse2-data`) or use a
+> fresh project name consistently (`-p` or `COMPOSE_PROJECT_NAME`).
+> `docker compose --profile '*' down -v` also resets it, but destroys all
+> portal data.
+
 Verify:
 
 ```bash
@@ -621,6 +629,7 @@ BLAST and its own local infra for MySQL/Keycloak.
 | JBrowse2 empty | The release's JBrowse2 jobs must have completed; check worker logs |
 | `port is already allocated` | Change `HTTP_PORT` (and `PUBLIC_SERVER` if it contains the port) |
 | Image pull denied | `docker login ghcr.io` with `read:packages`; or make the package public |
+| `setup-jbrowse2-web` says `/web` has existing files | A stale `emobase-portal_jbrowse2-data` volume exists from another checkout/project. Remove it (`docker volume rm emobase-portal_jbrowse2-data`) or use a fresh Compose project name (`-p` / `COMPOSE_PROJECT_NAME`). |
 | Directus database missing | Run `emobase-infra/scripts/create-database.sh <DIRECTUS_DB_DATABASE>` |
 | Directus not initialised | Re-run `docker compose run --rm setup-directus` |
 | Portal API `500` after first start | Migrations were skipped; run both `migrate-genomics-*` services |
