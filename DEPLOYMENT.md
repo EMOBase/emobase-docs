@@ -661,13 +661,16 @@ BLAST and its own local infra for MySQL/Keycloak.
 | Directus database missing | Run `emobase-infra/scripts/create-database.sh <DIRECTUS_DB_DATABASE>` |
 | Directus not initialised | Re-run `docker compose run --rm setup-directus` |
 | Portal API `500` after first start | Migrations were skipped; run both `migrate-genomics-*` services |
-| Changed `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after first start | Update Keycloak's issuer and redirect URIs in the admin console, or reset Keycloak |
+| Changed `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after first start | Run `emobase domain`, or update Keycloak's issuer and redirect URIs in the admin console / reset Keycloak |
 
-Changing `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after the realm is created is
-not automatic for Keycloak: the issuer and redirect URIs are stored in the
-realm. Dedicated realms are created during species init. For a throwaway
-deployment the cleanest fix is to reset the infrastructure and re-run the
-initialisers:
+If you use `emobase-cli`, run `emobase domain` to change the URLs. It updates
+the dependent `.env` files, the Keycloak issuer, and the realm origins in one
+step, and refuses to apply while Keycloak is down.
+
+Changing the URLs manually is not automatic for Keycloak: the issuer and
+redirect URIs are stored in the realm. Dedicated realms are created during
+species init. For a throwaway deployment the cleanest fix is to reset the
+infrastructure and re-run the initialisers:
 
 ```bash
 cd ~/emobase/emobase-infra && docker compose down -v   # destroys all shared data
