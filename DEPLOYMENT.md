@@ -13,6 +13,11 @@ Each repository's own README documents its services, environment variables and
 stack-specific maintenance. This guide covers the cross-repository deployment
 order and hand-off.
 
+Every `init.sh` asks for its values in order and shows the default in brackets.
+Press Enter to accept it. A flag answers that question in advance, and `--yes`
+accepts every default without prompting. The species code is required and has
+no default; for example, enter `Tcas`.
+
 **Run one `emobase-infra` on each server** that hosts the portal and/or species.
 It provides one MySQL and one Keycloak for every stack on that server. Deploy
 the local infrastructure first, then the portal (if present), then the species
@@ -75,6 +80,10 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    docker compose up -d --wait
    ```
 
+   The script asks for the shared network, Keycloak port, internal URL, realm
+   and client ID; press Enter to accept the local defaults. For an unattended
+   run, use `./init.sh --local --yes`.
+
    This writes `PORTAL_PUBLIC_SERVER=http://localhost:9080`,
    `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the shared
    MySQL/Keycloak secrets. Keycloak admin is at
@@ -94,7 +103,8 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    ./scripts/smoke-test.sh
    ```
 
-   Open `http://localhost:9080`.
+   The script asks for the nginx port; `--local` fills the portal URL. Press
+   Enter for the local default. Open `http://localhost:9080`.
 
 3. Species site. `--local` uses localhost for the browser, copies the portal
    URL from the sibling checkout and uses the local Keycloak:
@@ -108,6 +118,9 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    docker compose run --rm setup-directus
    docker compose up -d --wait
    ```
+
+   The script asks for the HTTP port, internal portal URL, Directus database,
+   project prefix and realm choice. Press Enter to accept the local defaults.
 
    This writes approximately:
 
@@ -313,6 +326,9 @@ BLAST traffic internal; otherwise it defaults to `PORTAL_SERVER`.
 
 ## 4. Deploy the local infrastructure
 
+Run `init.sh` without flags to answer each URL question, or pass the two public
+URLs and answer the rest:
+
 ```bash
 cd ~/emobase/emobase-infra
 ./init.sh \
@@ -320,6 +336,9 @@ cd ~/emobase/emobase-infra
   --keycloak-public-url https://auth.example.org/keycloak
 docker compose up -d --wait
 ```
+
+The shared network, Keycloak host port, internal URL, realm and client ID are
+still asked for and show defaults; press Enter to accept them.
 
 This creates the `emobase-infra` Docker network, initialises the MySQL
 databases (`emobase_genomics`, `keycloak`, `directus`) and imports the shared
@@ -343,6 +362,9 @@ browsers at `KEYCLOAK_PUBLIC_URL`. The admin console is at
 cd ~/emobase/emobase-portal-deploy
 ./init.sh --public-server https://portal.example.org --http-port 9080
 ```
+
+Run it without those flags to answer the nginx port and portal URL questions
+instead.
 
 `init.sh` reads the MySQL/Keycloak secrets, Keycloak endpoints, realm and client
 ID from `../emobase-infra/.env`, asks for anything not passed as a flag, and
@@ -420,7 +442,10 @@ cd ~/emobase/emobase-deploy
 ```
 
 `--portal-dir` reads `PUBLIC_SERVER` from that directory's `.env`. If the
-directory is named `../emobase-portal-deploy`, the flag can be omitted:
+directory is named `../emobase-portal-deploy`, the flag can be omitted. The
+script still asks for the HTTP port, internal portal URL, Directus database,
+project prefix and realm choice; press Enter to accept the defaults. The
+species code is required and has no default.
 
 ```bash
 ./init.sh --species Tcas --public-server https://tcas.example.org
@@ -478,10 +503,12 @@ species `.env`. For a shared realm these are copied from
 The password is temporary; Keycloak asks for a new one on first login.
 
 To add another species later, clone `emobase-deploy` into another directory (or
-another server) and repeat only this step with the matching `--species`,
-`--public-server` and `--portal-server` / `--portal-dir`. Each species checkout
-needs its own `.env`, Directus database/data and containers. On one Docker
-host, also give each stack a distinct `--http-port` and `--container-prefix`.
+another server) and run its `init.sh` again, answering the questions with the
+new species code and URLs. You can also pass the matching `--species`,
+`--public-server` and `--portal-server` / `--portal-dir` flags. Each species
+checkout needs its own `.env`, Directus database/data and containers. On one
+Docker host, give each stack a distinct `--http-port` and
+`--container-prefix`.
 Run `create-database.sh` once per species, and `allow-origin.sh` only when the
 species reuses the shared realm.
 
@@ -587,11 +614,13 @@ To add a server:
 
 1. Clone `emobase-infra` and `emobase-deploy` (and the portal if this server
    will run one) and give the server its own Keycloak DNS name or port.
-2. Run `emobase-infra/init.sh` on that server with its own
-   `--keycloak-public-url` and, if it has a portal, `--portal-server`.
+2. Run `emobase-infra/init.sh` on that server and answer the URL questions, or
+   pass its own `--keycloak-public-url` and, if it has a portal,
+   `--portal-server`.
 3. Start the local infra. Deploy the local portal, if present.
-4. Run `emobase-deploy/init.sh` against the local infra. If the portal lives on
-   another server, pass `--portal-server https://portal.example.org`.
+4. Run `emobase-deploy/init.sh` against the local infra and answer the
+   questions, or pass `--portal-server https://portal.example.org` when the
+   portal lives on another server.
 5. Create the Directus database and configure the realm on the local infra:
    `./scripts/create-database.sh directus_tcas` and
    `./scripts/allow-origin.sh https://tcas.example.org` (shared realm only).
