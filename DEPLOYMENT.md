@@ -78,16 +78,16 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    cd emobase-infra
    ./init.sh --local
    docker compose up -d --wait
+   ./scripts/ensure-shared-realm.sh http://localhost:9080
    ```
 
    The script asks for the shared network, Keycloak port, internal URL, realm
    and client ID; press Enter to accept the local defaults. For an unattended
    run, use `./init.sh --local --yes`.
 
-   This writes `PORTAL_PUBLIC_SERVER=http://localhost:9080`,
-   `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the shared
-   MySQL/Keycloak secrets. Keycloak admin is at
-   `http://localhost:8081/keycloak/admin/`.
+   This writes `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the
+   shared MySQL/Keycloak secrets. It does not need a portal URL. Keycloak admin
+   is at `http://localhost:8081/keycloak/admin/`.
 
 2. Portal. Its `init.sh` reads the shared secrets and Keycloak URLs from
    `../emobase-infra/.env`:
@@ -157,16 +157,16 @@ first release has built databases.
 ### Access from another machine (optional)
 
 For access from another machine on the LAN, use non-local public URLs. Because
-Keycloak's public issuer is fixed at import time, the simplest path for a
-throwaway local setup is to reset and recreate it with the LAN URLs:
+Keycloak's public issuer is fixed when the realm is created, the simplest path
+for a throwaway local setup is to reset and recreate it with the LAN URLs:
 
 ```bash
 cd emobase-infra
 docker compose down -v
 ./init.sh \
-  --portal-server http://192.168.1.10:9080 \
   --keycloak-public-url http://192.168.1.10:8081/keycloak -f
 docker compose up -d --wait
+./scripts/ensure-shared-realm.sh http://192.168.1.10:9080
 
 cd ../emobase-portal-deploy
 ./init.sh --public-server http://192.168.1.10:9080 -f
@@ -180,14 +180,13 @@ cd ../emobase-deploy
 cd ../emobase-infra
 ./scripts/create-database.sh directus_tcas
 # Only for the shared realm; a dedicated realm is configured by init.sh.
-./scripts/allow-origin.sh http://192.168.1.10:9090
+./scripts/ensure-shared-realm.sh http://192.168.1.10:9090
 ```
 
-Keycloak imports the realm only once. `allow-origin.sh` adds shared-realm
-species origins at any time, but changing the portal origin or
-`KEYCLOAK_PUBLIC_URL` after the first start requires resetting Keycloak or
-editing the realm in the admin console. Dedicated realms are created with their
-origin already allowed.
+`ensure-shared-realm.sh` creates the realm with the first origin and adds
+origins on later runs. Changing the portal origin or `KEYCLOAK_PUBLIC_URL`
+after the first start requires resetting Keycloak or editing the realm in the
+admin console. Dedicated realms are created with their origin already allowed.
 
 ### Reset the local stacks (optional)
 
@@ -274,7 +273,7 @@ Two common layouts:
 | Site | URL | Env file |
 | --- | --- | --- |
 | Keycloak | `http://SERVER_IP:8081/keycloak` | `emobase-infra/.env`: `KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_HOST_PORT=8081` |
-| Portal | `http://SERVER_IP:9080` | `emobase-infra/.env`: `PORTAL_PUBLIC_SERVER`<br>`emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9080` |
+| Portal | `http://SERVER_IP:9080` | `emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9080` |
 | Species | `http://SERVER_IP:9090` | `emobase-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9090` |
 
 Use the server's LAN/public IP or a DNS name for the browser-facing URLs. When
@@ -331,20 +330,18 @@ URLs and answer the rest:
 
 ```bash
 cd ~/emobase/emobase-infra
-./init.sh \
-  --portal-server https://portal.example.org \
-  --keycloak-public-url https://auth.example.org/keycloak
+./init.sh --keycloak-public-url https://auth.example.org/keycloak
 docker compose up -d --wait
 ```
 
 The shared network, Keycloak host port, internal URL, realm and client ID are
 still asked for and show defaults; press Enter to accept them.
 
-This creates the `emobase-infra` Docker network, initialises the MySQL
-databases (`emobase_genomics`, `keycloak`, `directus`) and imports the shared
-portal realm (`KEYCLOAK_REALM`, default `ibb`). It also generates
-`MYSQL_ROOT_PASSWORD`, `KEYCLOAK_CLIENT_SECRET` and the Keycloak admin/`coco`
-credentials. Review `.env` before continuing.
+This creates the `emobase-infra` Docker network and initialises the MySQL
+databases (`emobase_genomics`, `keycloak`, `directus`). Keycloak starts with
+only its master realm; the shared realm is created in the portal step. It also
+generates `MYSQL_ROOT_PASSWORD`, `KEYCLOAK_CLIENT_SECRET` and the Keycloak
+admin/`coco` credentials. Review `.env` before continuing.
 
 Check that both services are healthy:
 
@@ -369,11 +366,20 @@ instead.
 `init.sh` reads the MySQL/Keycloak secrets, Keycloak endpoints, realm and client
 ID from `../emobase-infra/.env`, asks for anything not passed as a flag, and
 generates the remaining secrets. The portal always uses the shared realm. It
-writes `.env` and prints the next commands. Review `.env` before continuing,
-especially:
+writes `.env` and prints the next commands.
 
-- `PUBLIC_SERVER` — the exact URL users open; it must match
-  `PORTAL_PUBLIC_SERVER` in `emobase-infra/.env`
+Create the shared realm with the portal origin before starting the portal:
+
+```bash
+../emobase-infra/scripts/ensure-shared-realm.sh https://portal.example.org
+```
+
+`emobase create portal`, `emobase up` and `emobase bootstrap` do this
+automatically when infra is running.
+
+Review `.env` before continuing, especially:
+
+- `PUBLIC_SERVER` — the exact URL users open
 - `HTTP_PORT` — the host port nginx binds
 - `EMOBASE_GENOMICS_IMAGE`, `EMOBASE_PORTAL_WEB_IMAGE` — pin a release/SHA tag
   for production instead of a moving branch tag
@@ -476,26 +482,29 @@ portal URL explicitly:
 During `init.sh` you choose the Keycloak realm model:
 
 - **Shared realm** — reuse the portal's realm. One team manages users for the
-  portal and every species. You must register the species origin with
-  `allow-origin.sh`.
+  portal and every species. Create the realm with the first origin, or add this
+  species' origin with `ensure-shared-realm.sh`.
 - **Dedicated realm** — `init.sh` creates `ibb_<species>` (or the realm name you
   pass) with its own client and `coco` administrator. Separate people can
-  manage that site without access to the portal realm. No `allow-origin.sh`
-  call is needed.
+  manage that site without access to the portal realm. No shared-realm setup
+  is needed.
 
-Create the Directus database, register the origin only for the shared realm,
-then initialise Directus and start the stack:
+Create the Directus database, create or extend the shared realm, then
+initialise Directus and start the stack:
 
 ```bash
 cd ~/emobase/emobase-infra
 ./scripts/create-database.sh directus_tcas
 # Only for the shared realm; a dedicated realm is configured by init.sh.
-./scripts/allow-origin.sh https://tcas.example.org
+./scripts/ensure-shared-realm.sh https://tcas.example.org
 
 cd ../emobase-deploy
 docker compose run --rm setup-directus
 docker compose up -d --wait
 ```
+
+On a portal server this adds the species origin to the existing realm. On a
+species-only server it creates the realm with that origin.
 
 Open the species URL and sign in with `COCO_USERNAME` / `COCO_PASSWORD` from the
 species `.env`. For a shared realm these are copied from
@@ -509,8 +518,8 @@ new species code and URLs. You can also pass the matching `--species`,
 checkout needs its own `.env`, Directus database/data and containers. On one
 Docker host, give each stack a distinct `--http-port` and
 `--container-prefix`.
-Run `create-database.sh` once per species, and `allow-origin.sh` only when the
-species reuses the shared realm.
+Run `create-database.sh` once per species, and `ensure-shared-realm.sh` for the
+shared realm.
 
 ## 7. Verify the whole setup
 
@@ -615,15 +624,16 @@ To add a server:
 1. Clone `emobase-infra` and `emobase-deploy` (and the portal if this server
    will run one) and give the server its own Keycloak DNS name or port.
 2. Run `emobase-infra/init.sh` on that server and answer the URL questions, or
-   pass its own `--keycloak-public-url` and, if it has a portal,
-   `--portal-server`.
-3. Start the local infra. Deploy the local portal, if present.
+   pass its own `--keycloak-public-url`.
+3. Start the local infra. Deploy the local portal, if present, and create the
+   shared realm with `./scripts/ensure-shared-realm.sh <first origin>`.
 4. Run `emobase-deploy/init.sh` against the local infra and answer the
    questions, or pass `--portal-server https://portal.example.org` when the
    portal lives on another server.
 5. Create the Directus database and configure the realm on the local infra:
    `./scripts/create-database.sh directus_tcas` and
-   `./scripts/allow-origin.sh https://tcas.example.org` (shared realm only).
+   `./scripts/ensure-shared-realm.sh https://tcas.example.org` (shared realm
+   only).
 6. Make sure the species server can reach the portal:
 
    ```bash
@@ -640,9 +650,9 @@ BLAST and its own local infra for MySQL/Keycloak.
 | --- | --- |
 | `502` on the portal | `docker compose ps` and `docker compose logs --tail=200 fe genomicsservice` |
 | Shared services unreachable | `cd ~/emobase/emobase-infra && docker compose ps`; `docker compose logs --tail=200 mysql keycloak` |
-| Login redirect loop | `PUBLIC_SERVER` must exactly match the browser URL and `emobase-infra/.env`'s `PORTAL_PUBLIC_SERVER`; `KEYCLOAK_PUBLIC_URL` must be the URL the browser uses for Keycloak |
+| Login redirect loop | `PUBLIC_SERVER` must exactly match the browser URL; `KEYCLOAK_PUBLIC_URL` must be the URL the browser uses for Keycloak. Create or extend the realm with `ensure-shared-realm.sh`. |
 | Keycloak redirects to the wrong host | `KEYCLOAK_PUBLIC_URL` does not match the URL exposed by the TLS proxy or host port |
-| Species login says invalid redirect URI | Shared realm only: register the origin with `emobase-infra/scripts/allow-origin.sh https://tcas.example.org`. A dedicated realm is configured by `init.sh`. |
+| Species login says invalid redirect URI | Shared realm only: register the origin with `emobase-infra/scripts/ensure-shared-realm.sh https://tcas.example.org`. A dedicated realm is configured by `init.sh`. |
 | Species site has no data | Portal needs a READY release; species `.env` `PORTAL_SERVER` must match the portal URL |
 | BLAST `502` | Expected until a release has built BLAST databases; check `/blast/searchdata.json` |
 | JBrowse2 empty | The release's JBrowse2 jobs must have completed; check worker logs |
@@ -653,11 +663,11 @@ BLAST and its own local infra for MySQL/Keycloak.
 | Portal API `500` after first start | Migrations were skipped; run both `migrate-genomics-*` services |
 | Changed `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after first start | Update Keycloak's issuer and redirect URIs in the admin console, or reset Keycloak |
 
-Changing `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after the first start is not
-automatic for Keycloak: the realm is imported once, including its issuer and
-redirect URIs. Dedicated realms are created during species init. For a
-throwaway deployment the cleanest fix is to reset the infrastructure and re-run
-the initialisers:
+Changing `PUBLIC_SERVER` or `KEYCLOAK_PUBLIC_URL` after the realm is created is
+not automatic for Keycloak: the issuer and redirect URIs are stored in the
+realm. Dedicated realms are created during species init. For a throwaway
+deployment the cleanest fix is to reset the infrastructure and re-run the
+initialisers:
 
 ```bash
 cd ~/emobase/emobase-infra && docker compose down -v   # destroys all shared data
@@ -672,12 +682,12 @@ Only do that if you can lose the data.
 - [ ] Docker + Compose available (and `python3` on the host)
 - [ ] All three repositories cloned into the same parent directory (or portal
       URL noted for a separate server)
-- [ ] `emobase-infra/.env` reviewed; `KEYCLOAK_PUBLIC_URL`,
-      `KEYCLOAK_HOST_PORT` and `PORTAL_PUBLIC_SERVER` are final; secrets
-      generated
+- [ ] `emobase-infra/.env` reviewed; `KEYCLOAK_PUBLIC_URL` and
+      `KEYCLOAK_HOST_PORT` are final; secrets generated
 - [ ] Local MySQL and Keycloak healthy; Keycloak reachable at
       `KEYCLOAK_PUBLIC_URL`
-- [ ] Portal `.env` reviewed; `PUBLIC_SERVER` matches the infra value
+- [ ] Shared realm created with the portal or first species origin
+- [ ] Portal `.env` reviewed
 - [ ] Portal images pulled
 - [ ] Portal JBrowse2 setup and both migrations completed
 - [ ] Portal stack up; smoke test passes
