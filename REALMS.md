@@ -120,6 +120,12 @@ owner's client credentials into their own `.env`.
 `realm.secret_mismatch` when two checkouts claim the same realm but use
 different credentials.
 
+The `emobase` CLI also keeps a workspace ownership ledger at
+`<workspace>/.emobase/state.json`. It records which databases and realms were
+created by which checkout. `emobase prune` uses that ledger to clean up
+resources from removed stacks without guessing from names. It skips shared
+realms that are still in use.
+
 ## Changing the Keycloak URL
 
 `KEYCLOAK_PUBLIC_URL` is the OIDC issuer. Changing it changes the issuer for
