@@ -82,9 +82,11 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    ```
 
    The script asks for the shared network, Keycloak port and internal URL;
-   press Enter to accept the local defaults. The shared realm/client default to
-   `ibb`/`ibb-client` and are created later. For an unattended run, use
-   `./init.sh --local --yes`.
+   press Enter to accept the local defaults. It does **not** create the realm.
+   It writes the shared realm/client names (default `ibb`/`ibb-client`) and
+   credentials; the `ensure-shared-realm.sh` command above creates the realm
+   with the portal origin. Override the names with flags or in `.env` before
+   that command. For an unattended run, use `./init.sh --local --yes`.
 
    This writes `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the
    shared MySQL/Keycloak secrets. It does not need a portal URL. Keycloak admin
@@ -340,8 +342,11 @@ docker compose up -d --wait
 ```
 
 The shared network, Keycloak host port and internal URL are still asked for and
-show defaults; press Enter to accept them. The shared realm/client default to
-`ibb`/`ibb-client`; override them with flags or in `.env`.
+show defaults; press Enter to accept them. Infra `init.sh` does **not** create
+the realm. It writes the shared realm/client names (default `ibb`/`ibb-client`)
+and credentials. The realm is created in the portal step below by
+`ensure-shared-realm.sh`; on a species-only server, run the same script with the
+first species origin. Override the names with flags or in `.env` before then.
 
 This creates the `emobase-infra` Docker network and initialises the MySQL
 databases (`emobase_genomics`, `keycloak`, `directus`). Keycloak starts with
