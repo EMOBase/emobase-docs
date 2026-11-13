@@ -6,6 +6,10 @@ own `emobase-infra` for the portal and species stacks deployed there.
 | Document | Contents |
 | --- | --- |
 | [Deployment runbook](DEPLOYMENT.md) | Full empty-server → working-site procedure for `emobase-infra`, `emobase-portal-deploy` and `emobase-deploy` |
+| [Realm model](REALMS.md) | Portal/species realm ownership, sharing, migration and credential checks |
+| [Infra init reference](https://github.com/EMOBase/emobase-infra/blob/main/INIT.md) | `emobase-infra/init.sh` prompts, flags and output |
+| [Portal init reference](https://github.com/EMOBase/emobase-portal-deploy/blob/main/INIT.md) | `emobase-portal-deploy/init.sh` prompts, flags and output |
+| [Species init reference](https://github.com/EMOBase/emobase-deploy/blob/dev/INIT.md) | `emobase-deploy/init.sh` prompts, realm menu and output |
 
 ## Repositories
 

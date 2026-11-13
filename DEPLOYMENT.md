@@ -13,6 +13,13 @@ Each repository's own README documents its services, environment variables and
 stack-specific maintenance. This guide covers the cross-repository deployment
 order and hand-off.
 
+For command-level details, see the
+[infra](https://github.com/EMOBase/emobase-infra/blob/main/INIT.md),
+[portal](https://github.com/EMOBase/emobase-portal-deploy/blob/main/INIT.md) and
+[species](https://github.com/EMOBase/emobase-deploy/blob/dev/INIT.md)
+`init.sh` references. Realm ownership and sharing are in
+[REALMS.md](REALMS.md).
+
 Every `init.sh` asks for its values in order and shows the default in brackets.
 Press Enter to accept it. A flag answers that question in advance, and `--yes`
 accepts every default without prompting. The species code is required and has
