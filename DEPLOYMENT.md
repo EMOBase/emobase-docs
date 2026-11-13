@@ -709,6 +709,7 @@ BLAST and its own local infra for MySQL/Keycloak.
 | Species site has no data | Portal needs a READY release; species `.env` `PORTAL_SERVER` must match the portal URL |
 | BLAST `502` | Expected until a release has built BLAST databases; check `/blast/searchdata.json` |
 | JBrowse2 empty | The release's JBrowse2 jobs must have completed; check worker logs |
+| `setup-jbrowse2-web` fails with `HTTP 403` | Update `emobase-portal-deploy`; setup downloads the pinned `JBROWSE_DOWNLOAD_URL` release instead of querying the rate-limited GitHub API. Override that variable in `.env` for a mirror or a newer release. |
 | `port is already allocated` | Change `HTTP_PORT` (and `PUBLIC_SERVER` if it contains the port) |
 | Image pull denied | `docker login ghcr.io` with `read:packages`; or make the package public |
 | Directus database missing | Run `emobase-infra/scripts/create-database.sh <DIRECTUS_DB_DATABASE>` |
