@@ -262,6 +262,10 @@ Decide the URLs **before** the first start. `KEYCLOAK_PUBLIC_URL` becomes the
 OIDC issuer; the portal and species URLs become redirect URIs and public links.
 Changing them later requires extra work (see Troubleshooting).
 
+Without `--local`, each `init.sh` offers the detected host IPv4 address as the
+default URL. That is the address used for the default route, not necessarily a
+NAT public address; enter the public IP or domain when the server is behind NAT.
+
 Every server needs its own Keycloak URL, and each portal/species site needs its
 own origin — a hostname or a port. They serve their UI at `/`, so do not put
 them under path prefixes of the same origin.
