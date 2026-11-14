@@ -132,21 +132,6 @@ realms that are still in use.
 every realm. Use `emobase domain` to update all dependent `.env` files and
 restart the stacks. Existing login sessions become invalid.
 
-## Migration from the old layout
-
-Older deployments stored the realm/client/seed values in
-`emobase-infra/.env`. To migrate:
-
-1. Copy `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`,
-   `COCO_USERNAME` and `COCO_PASSWORD` from `emobase-infra/.env` into the portal
-   `.env` (or the first species `.env` when there is no portal).
-2. Add `KEYCLOAK_REALM_MODE=joined` to species that share the portal realm, or
-   `KEYCLOAK_REALM_MODE=dedicated` to species with their own realm.
-3. Remove those realm keys from `emobase-infra/.env`.
-4. Keep the existing Keycloak database and realms; no realm recreation is
-   required.
-5. Run `emobase doctor`.
-
 ## Related references
 
 - [Infra init reference](https://github.com/EMOBase/emobase-infra/blob/main/INIT.md)
