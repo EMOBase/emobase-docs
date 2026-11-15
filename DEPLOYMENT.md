@@ -141,9 +141,10 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    docker compose up -d --wait
    ```
 
-   The script asks for the HTTP port, internal portal URL, Directus database,
-   project prefix and realm choice. Pick the portal realm to share users, or
-   create a new independent realm. Press Enter to accept the local defaults.
+   The script asks for the HTTP port, Directus database, project prefix and
+   realm choice. The internal portal URL is derived automatically. Pick the
+   portal realm to share users, or create a new independent realm. Press Enter
+   to accept the local defaults.
 
    This writes approximately:
 
@@ -206,7 +207,6 @@ cd ../emobase-portal-deploy
 cd ../emobase-deploy
 ./init.sh --public-server http://192.168.1.10:9090 \
   --portal-server http://192.168.1.10:9080 \
-  --portal-internal-url http://host.docker.internal:9080 \
   --species Tcas -f
 
 cd ../emobase-infra
@@ -476,7 +476,7 @@ per-species Directus database:
 | --- | --- | --- |
 | `PUBLIC_SERVER` | The URL users open for **this species site** | e.g. `https://tcas.example.org` |
 | `PORTAL_SERVER` | Public portal URL used by browser links | the portal's `PUBLIC_SERVER`, e.g. `https://portal.example.org` |
-| `PORTAL_INTERNAL_URL` | Portal URL used inside containers | e.g. `http://host.docker.internal:9080` on the same host |
+| `PORTAL_INTERNAL_URL` | Portal URL used inside containers | derived as `http://host.docker.internal:<portal port>` on the same host; unset for a remote portal |
 | `KEYCLOAK_PUBLIC_URL` | Local Keycloak public URL (from infra) | e.g. `https://auth.example.org/keycloak` |
 | `KEYCLOAK_REALM` | Joined realm or a new independent species realm | `emobase-portal` or `emobase-tcas` |
 | `DIRECTUS_DB_DATABASE` | This species' database in the local MySQL | e.g. `directus_tcas` |
@@ -497,9 +497,10 @@ cd ~/emobase/emobase-deploy
 
 `--portal-dir` reads `PUBLIC_SERVER` from that directory's `.env`. If the
 directory is named `../emobase-portal-deploy`, the flag can be omitted. The
-script still asks for the HTTP port, internal portal URL, Directus database,
-project prefix and realm choice; press Enter to accept the defaults. The
-species code is required and has no default.
+script asks for the HTTP port, Directus database, project prefix and realm
+choice; press Enter to accept the defaults. The species code is required and
+has no default. `PORTAL_INTERNAL_URL` is never asked for: it is derived from
+the portal checkout, or left empty for a remote portal.
 
 ```bash
 ./init.sh --species Tcas --public-server https://tcas.example.org
@@ -507,14 +508,16 @@ species code is required and has no default.
 
 On the same Docker host, `init.sh` defaults the internal portal URL to
 `http://host.docker.internal:<portal port>` so BLAST/SSR traffic does not leave
-through the public domain. Override it only when the portal is reachable at a
+through the public domain. It reads the port from the portal `.env` when the
+checkout is present. Override it only when the portal is reachable at a
 different private address:
 
 ```bash
 ./init.sh \
   --species Tcas \
   --public-server https://tcas.example.org \
-  --portal-dir ../emobase-portal-deploy
+  --portal-dir ../emobase-portal-deploy \
+  --portal-internal-url http://portal.internal:9080
 ```
 
 On a separate species server, first run that server's own `emobase-infra`,
