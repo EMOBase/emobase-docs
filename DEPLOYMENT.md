@@ -505,20 +505,21 @@ species code is required and has no default.
 ./init.sh --species Tcas --public-server https://tcas.example.org
 ```
 
-On the same Docker host, add the internal portal URL so BLAST/SSR traffic does
-not leave through the public domain:
+On the same Docker host, `init.sh` defaults the internal portal URL to
+`http://host.docker.internal:<portal port>` so BLAST/SSR traffic does not leave
+through the public domain. Override it only when the portal is reachable at a
+different private address:
 
 ```bash
 ./init.sh \
   --species Tcas \
   --public-server https://tcas.example.org \
-  --portal-dir ../emobase-portal-deploy \
-  --portal-internal-url http://host.docker.internal:9080
+  --portal-dir ../emobase-portal-deploy
 ```
 
 On a separate species server, first run that server's own `emobase-infra`,
-then leave `PORTAL_INTERNAL_URL` as the default (`PORTAL_SERVER`) and pass the
-portal URL explicitly:
+then omit `PORTAL_INTERNAL_URL` (Compose falls back to `PORTAL_SERVER`) and pass
+the portal URL explicitly:
 
 ```bash
 ./init.sh \
