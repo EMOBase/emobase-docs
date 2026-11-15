@@ -532,6 +532,10 @@ the portal URL explicitly:
   --portal-server https://portal.example.org
 ```
 
+Without `--portal-server` (and no local portal checkout), `init.sh` does not
+guess: it requires the remote portal's public URL, or tells you to run
+`emobase create portal` first if this server should host the portal.
+
 During `init.sh` you choose the Keycloak realm:
 
 - **Join an existing realm** — the menu lists the portal realm and realms from
