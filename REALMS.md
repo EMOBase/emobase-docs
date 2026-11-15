@@ -7,35 +7,57 @@ EMOBase separates the Keycloak **server** from the application **realms**.
 - The portal and species stacks create and own all application realms.
 - Infra has no default realm, client, seed user or application database.
 
+`emobase create` scaffolds `.env` files and, when infra is already running, also
+creates the portal database and registers realms. On a fresh server nothing is
+created yet; `emobase bootstrap`, `emobase up` and `emobase sync` create or
+extend the realms later. All of them use the credentials each checkout wrote to
+its own `.env`.
+
 ## Portal realm
 
-The portal owns the first realm. `emobase-portal-deploy/init.sh` defaults to:
+The portal owns the first realm. `emobase create portal` writes:
 
 ```dotenv
 KEYCLOAK_REALM=emobase-portal
 KEYCLOAK_CLIENT_ID=emobase-portal-client
 ```
 
-The portal also generates `KEYCLOAK_CLIENT_SECRET` and the `coco` seed user.
-These values live only in the portal `.env`.
+It also generates `KEYCLOAK_CLIENT_SECRET` and the `coco` seed user. These
+values live only in the portal `.env`. When the realm is created — by
+`emobase create portal` with infra already running, or later by `emobase
+bootstrap`, `up` or `sync` — the portal's `PUBLIC_SERVER` becomes its first
+origin.
 
 ## Species realms
 
 A species can either join an existing realm or create a new one.
 
-`emobase-deploy/init.sh` scans the portal and sibling species checkouts and
-offers:
+```bash
+# Join the portal realm: shared users and login
+emobase create species --species Tcas --keycloak-realm join:emobase-portal
+
+# Create a dedicated realm
+emobase create species --species Tcas --keycloak-realm new:emobase-tcas
+```
+
+`--realm` is an alias for `--keycloak-realm`. Without either flag,
+`emobase create species` asks with a menu built from the portal and sibling
+species checkouts:
 
 ```text
-1) Realm 'emobase-portal' — used by portal
-2) Realm 'emobase-tcas' — used by Tcas
-3) Create a new independent realm [emobase-dmel]
+🔐 Keycloak realm for this species:
+   1) Realm 'emobase-portal' — used by portal
+   2) Realm 'emobase-tcas' — used by Tcas
+   3) Create a new independent realm [emobase-dmel]
 ```
+
+With `--yes` and no realm flag, the species joins the first discovered realm.
+On a species-only server with no existing realm, it creates a new one.
 
 ### Join an existing realm
 
 Joining means the species uses the same users, roles and login session as the
-realm owner. The script copies:
+realm owner. The CLI copies from the owner's `.env`:
 
 - `KEYCLOAK_REALM`
 - `KEYCLOAK_CLIENT_ID`
@@ -43,8 +65,9 @@ realm owner. The script copies:
 - `COCO_USERNAME`
 - `COCO_PASSWORD`
 
-It writes `KEYCLOAK_REALM_MODE=joined` and registers the species origin on the
-realm's client.
+It writes `KEYCLOAK_REALM_MODE=joined`. When the realm is created (or already
+exists), the species' `PUBLIC_SERVER` is registered as an additional origin on
+the realm's client.
 
 Only realms with locally available credentials can be joined. A realm that
 exists only in Keycloak cannot be joined automatically because its client
@@ -62,79 +85,60 @@ KEYCLOAK_REALM_MODE=dedicated
 
 The species generates its own client secret and seed password.
 
-## CLI flags
+## When realms are created
 
-```sh
-# Join the portal realm
-emobase create species --keycloak-realm join:emobase-portal
+| Command | Realm work |
+| --- | --- |
+| `emobase create portal` | Scaffold `.env`; create the portal database and realm if infra is already running |
+| `emobase create species` | Scaffold `.env`; register the realm if Keycloak is already running |
+| `emobase create species --apply` | Create the Directus database, register the realm origin, initialise Directus, start |
+| `emobase bootstrap` | Create the portal realm, then create or extend each species realm |
+| `emobase up` | Create or extend realms before starting each stack |
+| `emobase sync` | Create missing databases and register missing origins without starting containers |
 
-# Create a new realm
-emobase create species --keycloak-realm new:emobase-dmel
-```
-
-`--realm` is an alias for `--keycloak-realm` in `emobase create species`.
-
-When `--yes` is used and no realm is passed, a species joins the first
-discovered realm. On a species-only server with no existing realm, it creates a
-new realm.
-
-## Creating the realm
-
-Realm creation is deferred until Keycloak is healthy. It is performed by:
-
-- `emobase create portal` / `emobase create species`, when infra is running
-- `emobase up`
-- `emobase bootstrap`
-- or manually with `emobase-infra/scripts/create-realm.sh`
-
-`create-realm.sh` is idempotent. It creates or updates the realm, client,
-origin and seed user, and keeps an existing seed password.
-
-```bash
-cd emobase-infra
-./scripts/create-realm.sh \
-  --realm emobase-tcas \
-  --origin https://tcas.example.org \
-  --client-id emobase-tcas-client \
-  --client-secret "<KEYCLOAK_CLIENT_SECRET from the species .env>" \
-  --coco-username coco \
-  --coco-password "<COCO_PASSWORD from the species .env>" \
-  --keep-password --quiet
-```
-
-`allow-origin.sh` only adds another origin to an existing client:
-
-```bash
-./scripts/allow-origin.sh \
-  --realm emobase-portal \
-  --client-id emobase-portal-client \
-  https://dmel.example.org
-```
+Realm creation is idempotent: it creates or updates the realm, client, origin
+and seed user, and keeps an existing seed password. `emobase sync` never
+deletes resources; `emobase prune` handles cleanup.
 
 ## Credential ownership
 
 The first checkout that creates a realm is its owner. Joining species copy the
 owner's client credentials into their own `.env`.
 
-`emobase doctor` reports a `realm.client_mismatch` or
-`realm.secret_mismatch` when two checkouts claim the same realm but use
-different credentials.
+```bash
+emobase doctor
+```
 
-The `emobase` CLI also keeps a workspace ownership ledger at
-`<workspace>/.emobase/state.json`. It records which databases and realms were
-created by which checkout. `emobase prune` uses that ledger to clean up
-resources from removed stacks without guessing from names. It skips shared
-realms that are still in use.
+reports `realm.client_mismatch` or `realm.secret_mismatch` when two checkouts
+claim the same realm but use different credentials. `emobase env matrix` shows
+which checkout is authoritative for each shared key.
+
+The CLI keeps a workspace ownership ledger at `<workspace>/.emobase/state.json`.
+It records which databases and realms were created by which checkout.
+`emobase prune` uses that ledger to clean up resources from removed stacks
+without guessing from names. It skips shared realms that are still in use.
 
 ## Changing the Keycloak URL
 
 `KEYCLOAK_PUBLIC_URL` is the OIDC issuer. Changing it changes the issuer for
-every realm. Use `emobase domain` to update all dependent `.env` files and
-restart the stacks. Existing login sessions become invalid.
+every realm.
+
+```bash
+emobase domain plan  --auth https://auth.example.org/keycloak
+emobase domain apply --auth https://auth.example.org/keycloak
+```
+
+`domain` updates every dependent `.env`, registers the new origins and restarts
+the affected stacks. Existing login sessions become invalid. Old origins are
+left in place; remove them in the Keycloak admin console if the cutover is
+permanent.
+
+On a species-only server, `domain` manages the local Keycloak and species URLs
+and leaves `PORTAL_SERVER` untouched.
 
 ## Related references
 
+- [Full deployment runbook](DEPLOYMENT.md)
 - [Infra init reference](https://github.com/EMOBase/emobase-infra/blob/main/INIT.md)
 - [Portal init reference](https://github.com/EMOBase/emobase-portal-deploy/blob/main/INIT.md)
 - [Species init reference](https://github.com/EMOBase/emobase-deploy/blob/dev/INIT.md)
-- [Full deployment runbook](DEPLOYMENT.md)
