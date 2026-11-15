@@ -87,9 +87,10 @@ and ports `8081`/`9080`/`9090` free. On Apple Silicon, enable Rosetta for
    docker compose up -d --wait
    ```
 
-   The script asks for the shared network, Keycloak port and internal URL;
-   press Enter to accept the local defaults. It does **not** ask for or create a
-   realm. For an unattended run, use `./init.sh --local --yes`.
+   The script asks for the shared network and Keycloak port; press Enter to
+   accept the local defaults. The container-facing Keycloak URL is fixed to
+   `http://keycloak:8080/keycloak`, so it is not asked for. It does **not** ask
+   for or create a realm. For an unattended run, use `./init.sh --local --yes`.
 
    This writes `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak` and the
    MySQL/Keycloak admin secrets. It does not need a portal URL. Keycloak admin
