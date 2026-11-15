@@ -533,8 +533,9 @@ the portal URL explicitly:
 ```
 
 Without `--portal-server` (and no local portal checkout), `init.sh` does not
-guess: it requires the remote portal's public URL, or tells you to run
-`emobase create portal` first if this server should host the portal.
+guess: it requires the remote portal's public URL. When it is invoked through
+`emobase create species`, it also suggests running `emobase create portal` if
+this server should host the portal.
 
 During `init.sh` you choose the Keycloak realm:
 
