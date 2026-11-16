@@ -5,9 +5,9 @@ command. The CLI is the control point for the three deployment repositories:
 
 | Repository | What it runs | Default host port |
 | --- | --- | --- |
-| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | MySQL and Keycloak for all stacks on this server | `8081` (Keycloak) |
-| [`emobase-portal-deploy`](https://github.com/EMOBase/emobase-portal-deploy) | Portal UI, genomics API/workers, Elasticsearch, JBrowse2, BLAST | `9080` |
-| [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) | Single-species UI, its own Elasticsearch and Directus (`dev` branch) | `9090` |
+| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | MySQL, Keycloak and Elasticsearch for all stacks on this server | `8081` (Keycloak), `9202` (Elasticsearch, loopback only) |
+| [`emobase-portal-deploy`](https://github.com/EMOBase/emobase-portal-deploy) | Portal UI, genomics API/workers, JBrowse2, BLAST | `9080` |
+| [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) | Single-species UI and Directus (`dev` branch) | `9090` |
 
 `emobase` only orchestrates: it clones checkouts, calls each repository's own
 `init.sh`, and runs their Compose commands in the right order. Every checkout
@@ -32,7 +32,7 @@ CLI, see [Without the CLI](#without-the-cli) for the repository references.
 | `emobase update` | `git pull`, pull images, migrate and restart in the documented order |
 | `emobase sync` | Create missing databases and register missing realm origins after manual edits |
 | `emobase species list` / `remove` | List species checkouts, or stop and purge one |
-| `emobase prune` | Remove databases/realms recorded in the ownership ledger whose checkout is gone |
+| `emobase prune` | Remove databases, realms and index prefixes recorded in the ownership ledger whose checkout is gone |
 
 `create` writes `.env` and, when infra is already running, also creates the
 portal database and registers realms. It never starts containers. On a fresh
@@ -50,7 +50,7 @@ checkouts.
 ├── emobase-portal-deploy/
 ├── emobase-deploy-tcas/
 ├── emobase-deploy-dmel/       # one emobase-deploy clone per species
-└── .emobase/state.json        # ownership ledger (databases, realms)
+└── .emobase/state.json        # ownership ledger (databases, realms, index prefixes)
 ```
 
 Run `emobase` from the workspace, or pass `--workspace DIR`. Commands discover
@@ -60,10 +60,10 @@ the checkouts from the current directory or its parent.
 `--dir` places it elsewhere. Use the same parent for all checkouts so the
 repositories can read each other's `.env`.
 
-The ownership ledger records which databases and realms each checkout created.
-`emobase prune` uses it to clean up resources of deleted stacks without
-guessing from names. Copy it only together with the workspace; do not reuse it
-on another server.
+The ownership ledger records which databases, realms and Elasticsearch index
+prefixes each checkout created. `emobase prune` uses it to clean up resources of
+deleted stacks without guessing from names. Copy it only together with the
+workspace; do not reuse it on another server.
 
 ## Prerequisites
 
@@ -72,10 +72,10 @@ on another server.
 - Outbound HTTPS to `ghcr.io`, Docker Hub and `quay.io`
 - DNS names (or one name plus ports) for the portal, each species site and
   Keycloak
-- Enough RAM/disk for one local MySQL/Keycloak pair, one Elasticsearch per
-  stack, and the application containers. Sharing MySQL/Keycloak saves roughly
-  2-3 GiB at four species on one server, but 8 GB is only enough for a portal
-  plus one or two species; plan 24-32 GB for four to five species on a server.
+- Enough RAM/disk for one local MySQL/Keycloak/Elasticsearch trio, and the
+  application containers. Sharing them saves roughly 2-3 GiB at four species on
+  one server, but 8 GB is only enough for a portal plus one or two species; plan
+  24-32 GB for four to five species on a server.
 - Ports reachable by the browser: `8081` for Keycloak, `9080` for the portal and
   `9090` for the species site when using the built-in services directly
 
@@ -254,12 +254,17 @@ It writes `.env` with:
 
 - `KEYCLOAK_PUBLIC_URL` and `KEYCLOAK_HOST_PORT`
 - the fixed container-facing `KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak`
+- `ELASTICSEARCH_HOST_PORT`, `ELASTICSEARCH_JAVA_OPTS` and `ELASTICSEARCH_MEM_LIMIT`
 - the shared Docker network name
 - generated MySQL root and Keycloak admin passwords
 
-It does **not** create a realm or an application database. Review the `.env`
-before the first start. `/srv/emobase/emobase-infra/.env` is the authority for
-the shared secrets; every other stack reads them from there.
+It does **not** create a realm, an application database or an Elasticsearch
+index. Review the `.env` before the first start. Elasticsearch is shared by the
+portal and every species: the portal writes `genomics-*` indices, and each
+species writes `<prefix>-*` indices under its own `EMOBASE_ES_INDEX_PREFIX`.
+`ELASTICSEARCH_HOST_PORT` binds to `127.0.0.1` only, for administration and
+snapshots. `/srv/emobase/emobase-infra/.env` is the authority for the shared
+secrets; every other stack reads them from there.
 
 ### 2. Create the portal (skip on a species-only server)
 
@@ -306,6 +311,11 @@ The species `.env` gets:
 | `KEYCLOAK_PUBLIC_URL` | This server's Keycloak URL | from `emobase-infra/.env` |
 | `KEYCLOAK_REALM` | Joined realm or a dedicated species realm | e.g. `emobase-portal`, `emobase-tcas` |
 | `DIRECTUS_DB_DATABASE` | This species' database | e.g. `directus_tcas` |
+| `EMOBASE_ES_INDEX_PREFIX` | This species' slice of the shared Elasticsearch | e.g. `tcas`; must be unique and not `genomics` |
+
+A checkout created before the shared instance has no `EMOBASE_ES_INDEX_PREFIX`.
+Add `EMOBASE_ES_INDEX_PREFIX=<species>` to its `.env` and re-import the data
+(see the [species README](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md#elasticsearch)).
 
 Choose the realm with `--keycloak-realm`:
 
@@ -391,10 +401,10 @@ emobase create species \
 emobase bootstrap --only species
 ```
 
-`--directus-db` and `--container-prefix` default to values derived from the
-species code, so the defaults are unique per species. Run
-`emobase doctor` after creating a species to confirm there are no duplicate
-ports, databases or URLs.
+`--directus-db`, `--container-prefix` and `--es-index-prefix` default to
+values derived from the species code, so the defaults are unique per species.
+Run `emobase doctor` after creating a species to confirm there are no duplicate
+ports, databases, index prefixes or URLs.
 
 `bootstrap --only species` expects the local infra to be running; start it with
 `emobase up --only infra` first if it is stopped.
@@ -489,10 +499,10 @@ emobase species remove Tcas
 
 Without `--purge` this only prints the commands it would run. With
 `--purge --yes` it stops the stack, deletes its Compose volumes, drops the
-Directus database and removes the checkout directory (keep it with
-`--keep-dir`). A dedicated realm is cleaned up by `emobase prune`, which only
-touches resources recorded in the ownership ledger and skips shared realms
-that are still in use.
+Directus database, deletes its `<prefix>-*` Elasticsearch indices and removes
+the checkout directory (keep it with `--keep-dir`). A dedicated realm is
+cleaned up by `emobase prune`, which only touches resources recorded in the
+ownership ledger and skips shared realms that are still in use.
 
 ## Backup essentials
 
@@ -504,7 +514,7 @@ Back up:
 - `emobase-deploy-*/data/`, `emobase-deploy-*/images/`
 - The local MySQL instance (portal genomics, Keycloak realms/users and every
   Directus database)
-- Elasticsearch data from each stack
+- Elasticsearch data from the shared `emobase-infra` instance
 - Directus uploads (`directus-data` volume per species)
 
 Example MySQL dump (host-level, outside the CLI):
@@ -516,9 +526,10 @@ docker compose exec -T mysql \
   > emobase-mysql-$(date +%F).sql
 ```
 
-For Elasticsearch, use the snapshot procedure in the species stack's README.
-The portal's Elasticsearch is not exposed on a host port; snapshot it from
-inside the Compose network or back up the `es-data` volume.
+For Elasticsearch, use the snapshot procedure in the `emobase-infra` README.
+The instance listens on `127.0.0.1:9202` for administration and snapshots; it
+is not reachable from the LAN. Snapshots are written to
+`emobase-infra/es_bk/`.
 
 ## Troubleshooting
 
@@ -546,6 +557,7 @@ emobase domain plan
 | Image pull denied | `docker login ghcr.io` with `read:packages`; or make the package public |
 | Directus database missing | `emobase sync`, or `emobase doctor --fix --live` |
 | Directus not initialised | `emobase bootstrap --only species` |
+| Search returns no results after moving to shared Elasticsearch | Check the species `EMOBASE_ES_INDEX_PREFIX` and `docker compose logs es-proxy`; indices are `<prefix>-*` |
 | Portal API `500` after first start | Migrations were skipped; `emobase bootstrap --only portal` (without `--skip-migrations`) |
 | Changed a URL after first start | `emobase domain plan`, then `emobase domain apply`; the issuer change forces users to sign in again |
 
@@ -569,7 +581,8 @@ Only do that if you can lose the data.
 - [ ] `KEYCLOAK_PUBLIC_URL` and `KEYCLOAK_HOST_PORT` are final
 - [ ] Portal checkout created and `.env` reviewed (portal servers only)
 - [ ] Image tags pinned for production
-- [ ] Each species checkout created with a unique HTTP port and database
+- [ ] Each species checkout created with a unique HTTP port, database and
+      Elasticsearch index prefix
 - [ ] Realm choice made (joined vs dedicated) for every species
 - [ ] `emobase doctor` reports no errors
 - [ ] `emobase bootstrap` completed
