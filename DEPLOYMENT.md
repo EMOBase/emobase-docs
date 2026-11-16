@@ -56,9 +56,9 @@ checkouts.
 Run `emobase` from the workspace, or pass `--workspace DIR`. Commands discover
 the checkouts from the current directory or its parent.
 
-`create` asks before cloning a missing checkout; `--clone` answers yes and
-`--dir` places it elsewhere. Use the same parent for all checkouts so the
-repositories can read each other's `.env`.
+`create` asks before cloning a missing checkout; `--yes` and `--clone` accept
+the clone, and `--dir` places it elsewhere. Use the same parent for all
+checkouts so the repositories can read each other's `.env`.
 
 The ownership ledger records which databases, realms and Elasticsearch index
 prefixes each checkout created. `emobase prune` uses it to clean up resources of
