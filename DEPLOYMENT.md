@@ -5,7 +5,7 @@ command. The CLI is the control point for the three deployment repositories:
 
 | Repository | What it runs | Default host port |
 | --- | --- | --- |
-| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | MySQL, Keycloak and Elasticsearch for all stacks on this server | `8081` (Keycloak), `9202` (Elasticsearch, loopback only) |
+| [`emobase-infra`](https://github.com/EMOBase/emobase-infra) | MySQL, Keycloak and Elasticsearch for all stacks on this server | `8181` (Keycloak), `9202` (Elasticsearch, loopback only) |
 | [`emobase-portal-deploy`](https://github.com/EMOBase/emobase-portal-deploy) | Portal UI, genomics API/workers, JBrowse2, BLAST | `9080` |
 | [`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) | Single-species UI and Directus (`dev` branch) | `9090` |
 
@@ -76,7 +76,7 @@ workspace; do not reuse it on another server.
   application containers. Sharing them saves roughly 2-3 GiB at four species on
   one server, but 8 GB is only enough for a portal plus one or two species; plan
   24-32 GB for four to five species on a server.
-- Ports reachable by the browser: `8081` for Keycloak, `9080` for the portal and
+- Ports reachable by the browser: `8181` for Keycloak, `9080` for the portal and
   `9090` for the species site when using the built-in services directly
 
 Check Docker:
@@ -119,7 +119,7 @@ them under path prefixes of the same origin.
 
 | Site | URL |
 | --- | --- |
-| Keycloak | `http://SERVER_IP:8081/keycloak` |
+| Keycloak | `http://SERVER_IP:8181/keycloak` |
 | Portal | `http://SERVER_IP:9080` |
 | Species | `http://SERVER_IP:9090` |
 
@@ -131,7 +131,7 @@ Example with three DNS names:
 
 | Site | Public URL | Proxy target |
 | --- | --- | --- |
-| Keycloak | `https://auth.example.org/keycloak` | `http://127.0.0.1:8081` |
+| Keycloak | `https://auth.example.org/keycloak` | `http://127.0.0.1:8181` |
 | Portal | `https://portal.example.org` | `http://127.0.0.1:9080` |
 | Species | `https://tcas.example.org` | `http://127.0.0.1:9090` |
 
@@ -139,7 +139,7 @@ A minimal Caddy configuration:
 
 ```caddyfile
 auth.example.org {
-    reverse_proxy 127.0.0.1:8081
+    reverse_proxy 127.0.0.1:8181
 }
 
 portal.example.org {
@@ -164,7 +164,7 @@ Keycloak and MySQL are **not** shared across servers: each server runs its own
 
 Use this to try the whole stack on a laptop or desktop before any DNS/TLS
 exists. Portal, Keycloak and species use `localhost` over plain HTTP on ports
-`9080` (portal), `8081` (Keycloak) and `9090` (species).
+`9080` (portal), `8181` (Keycloak) and `9090` (species).
 
 ```bash
 mkdir -p ~/emobase && cd ~/emobase
@@ -179,7 +179,7 @@ emobase status
 
 What to expect:
 
-- `create infra --local` writes `KEYCLOAK_PUBLIC_URL=http://localhost:8081/keycloak`.
+- `create infra --local` writes `KEYCLOAK_PUBLIC_URL=http://localhost:8181/keycloak`.
   The container-facing Keycloak URL is fixed to `http://keycloak:8080/keycloak`.
 - `create portal --local` reads the Keycloak URLs and MySQL password from
   `../emobase-infra/.env` and creates the portal realm credentials.
@@ -193,7 +193,7 @@ What to expect:
   starts every stack.
 
 Open `http://localhost:9080` for the portal and `http://localhost:9090` for the
-species site. Keycloak admin is at `http://localhost:8081/keycloak/admin/`.
+species site. Keycloak admin is at `http://localhost:8181/keycloak/admin/`.
 
 On Apple Silicon, enable Rosetta for `linux/amd64` first, or BLAST will not
 start (see the portal README).
@@ -224,7 +224,7 @@ emobase down
 # On each checkout: docker compose --profile '*' down -v (destroys data)
 cd ~/emobase
 
-emobase create infra --keycloak-public-url http://192.168.1.10:8081/keycloak --force
+emobase create infra --keycloak-public-url http://192.168.1.10:8181/keycloak --force
 emobase create portal --public-server http://192.168.1.10:9080 --force
 emobase create species --species Tcas \
   --public-server http://192.168.1.10:9090 \
