@@ -46,7 +46,7 @@ species checkouts:
 
 ```text
 🔐 Keycloak realm for this species:
-   1) Create a new independent realm [emobase-dmel]
+   1) Create a new independent realm
    2) Realm 'emobase-portal' — used by portal
    3) Realm 'emobase-tcas' — used by Tcas
 ```
