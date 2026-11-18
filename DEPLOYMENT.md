@@ -208,10 +208,12 @@ emobase status
 emobase doctor --live
 ```
 
-Sign in with the seeded `coco` user from the portal `.env` (or the realm
-owner's `.env` when the species joined another realm) and confirm that
-JBrowse2/BLAST links point at the portal URL. BLAST returns `502` until the
-first release has built databases.
+Sign in with the seeded user: `emobase credential show portal` prints it for one
+stack, while `emobase credential show` lists every realm's user without the
+password. `emobase credential show infra` prints the Keycloak admin login for the
+console. The seed password is temporary, so Keycloak asks for a new one on the
+first sign-in. Then confirm that JBrowse2/BLAST links point at the portal URL.
+BLAST returns `502` until the first release has built databases.
 
 ### Access from another machine (optional)
 
