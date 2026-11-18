@@ -46,13 +46,16 @@ species checkouts:
 
 ```text
 🔐 Keycloak realm for this species:
-   1) Realm 'emobase-portal' — used by portal
-   2) Realm 'emobase-tcas' — used by Tcas
-   3) Create a new independent realm [emobase-dmel]
+   1) Create a new independent realm [emobase-dmel]
+   2) Realm 'emobase-portal' — used by portal
+   3) Realm 'emobase-tcas' — used by Tcas
 ```
 
-With `--yes` and no realm flag, the species joins the first discovered realm.
-On a species-only server with no existing realm, it creates a new one.
+The new-realm entry always keeps number 1, so its position does not shift as
+species are added; existing realms follow in discovery order. Pressing Enter,
+and `--yes` without a realm flag, keep the previous default: join the first
+discovered realm. On a species-only server with no existing realm, it creates a
+new one.
 
 ### Join an existing realm
 
