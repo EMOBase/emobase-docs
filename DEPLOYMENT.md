@@ -19,20 +19,20 @@ CLI, see [Without the CLI](#without-the-cli) for the repository references.
 
 ## How the CLI is organised
 
-| Command | What it does |
-| --- | --- |
-| `emobase create infra` | Clone `emobase-infra` if needed and scaffold its `.env` |
-| `emobase create portal` | Clone `emobase-portal-deploy` if needed and scaffold its `.env`; creates the portal database and realm if infra is already running |
-| `emobase create species` | Clone `emobase-deploy` (branch `dev`) into `emobase-deploy-<species>` and scaffold its `.env`; registers the realm if Keycloak is already running |
-| `emobase bootstrap` | Pull images, start infra, create databases and realms, run JBrowse2 setup and migrations, initialise Directus, start everything |
-| `emobase up` / `down` | Start or stop the stacks in dependency order |
-| `emobase status` | Show containers, databases, realms and configured URLs |
-| `emobase doctor` | Check the cross-repository configuration (`--live` also checks the running services) |
-| `emobase domain` | Inspect or change the browser-facing URLs and Keycloak issuer |
-| `emobase update` | `git pull`, pull images, migrate and restart in the documented order |
-| `emobase sync` | Create missing databases and register missing realm origins after manual edits |
-| `emobase species list` / `remove` | List species checkouts, or stop and purge one |
-| `emobase prune` | Remove databases, realms and index prefixes recorded in the ownership ledger whose checkout is gone |
+| Command                           | What it does                                                                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `emobase create infra`            | Clone `emobase-infra` if needed and scaffold its `.env`                                                                            |
+| `emobase create portal`           | Clone `emobase-portal-deploy` if needed and scaffold its `.env`; creates the portal database and realm if infra is already running |
+| `emobase create species`          | Clone `emobase-deploy` (branch `dev`) into `<species>` and scaffold its `.env`; registers the realm if Keycloak is already running |
+| `emobase bootstrap`               | Pull images, start infra, create databases and realms, run JBrowse2 setup and migrations, initialise Directus, start everything    |
+| `emobase up` / `down`             | Start or stop the stacks in dependency order                                                                                       |
+| `emobase status`                  | Show containers, databases, realms and configured URLs                                                                             |
+| `emobase doctor`                  | Check the cross-repository configuration (`--live` also checks the running services)                                               |
+| `emobase domain`                  | Inspect or change the browser-facing URLs and Keycloak issuer                                                                      |
+| `emobase update`                  | `git pull`, pull images, migrate and restart in the documented order                                                               |
+| `emobase sync`                    | Create missing databases and register missing realm origins after manual edits                                                     |
+| `emobase species list` / `remove` | List species checkouts, or stop and purge one                                                                                      |
+| `emobase prune`                   | Remove databases, realms and index prefixes recorded in the ownership ledger whose checkout is gone                                |
 
 `create` writes `.env` and, when infra is already running, also creates the
 portal database and registers realms. It never starts containers. On a fresh
@@ -46,12 +46,15 @@ checkouts.
 
 ```text
 /srv/emobase/
-├── emobase-infra/
-├── emobase-portal-deploy/
-├── emobase-deploy-tcas/
-├── emobase-deploy-dmel/       # one emobase-deploy clone per species
+├── infra/
+├── portal/
+├── Tcas/
+├── Dmel/                      # one emobase-deploy clone per species
 └── .emobase/state.json        # ownership ledger (databases, realms, index prefixes)
 ```
+
+`emobase create` uses these names and prompts for the directory, so a checkout
+can be renamed per deployment without breaking discovery.
 
 Run `emobase` from the workspace, or pass `--workspace DIR`. Commands discover
 the checkouts from the current directory or its parent.
@@ -158,7 +161,7 @@ forwarded headers. Set `KEYCLOAK_PUBLIC_URL` to the public auth URL.
 The portal URL must be reachable from a species server, not just from the
 browser, because the species nginx proxies `/blast/` to the portal's `/blast/`.
 Keycloak and MySQL are **not** shared across servers: each server runs its own
-`emobase-infra`.
+infra stack.
 
 ## Quick start: local trial
 
@@ -182,7 +185,7 @@ What to expect:
 - `create infra --local` writes `KEYCLOAK_PUBLIC_URL=http://localhost:8181/keycloak`.
   The container-facing Keycloak URL is fixed to `http://keycloak:8080/keycloak`.
 - `create portal --local` reads the Keycloak URLs and MySQL password from
-  `../emobase-infra/.env` and creates the portal realm credentials.
+  `../infra/.env` and creates the portal realm credentials.
 - `create species --species Tcas --local` copies the portal URL from the
   sibling portal checkout. `PORTAL_INTERNAL_URL` is derived as
   `http://host.docker.internal:9080`, so BLAST/SSR traffic stays internal.
@@ -244,7 +247,8 @@ The four steps below are the same for one server that runs the portal and
 species, and for a species-only server (skip the portal step).
 
 Every `create` command can also run interactively: omit the flags and it prompts
-for each value.
+for each value, including the checkout directory (`infra`, `portal`, `<Species>`)
+— press Enter to keep the default.
 
 ### 1. Create the infrastructure
 
@@ -254,10 +258,10 @@ mkdir -p /srv/emobase && cd /srv/emobase
 emobase create infra --keycloak-public-url https://auth-a.example.org/keycloak
 ```
 
-Clones `emobase-infra` and writes its `.env`, including generated MySQL root and
-Keycloak admin passwords. Review it before the first start: this file is the
-authority for the shared secrets, and every other stack reads them from it. No
-realm, database or index is created here.
+Clones the `emobase-infra` repository into `infra/` and writes its `.env`,
+including generated MySQL root and Keycloak admin passwords. Review it before the
+first start: this file is the authority for the shared secrets, and every other
+stack reads them from it. No realm, database or index is created here.
 
 ### 2. Create the portal (skip on a species-only server)
 
@@ -265,7 +269,7 @@ realm, database or index is created here.
 emobase create portal --public-server https://portal.example.org
 ```
 
-Reads the Keycloak URLs and MySQL password from `../emobase-infra/.env` and
+Reads the Keycloak URLs and MySQL password from `../infra/.env` and
 creates the `emobase-portal` realm, client and seed user. Review `PUBLIC_SERVER`
 and `HTTP_PORT`, and pin `EMOBASE_GENOMICS_IMAGE` / `EMOBASE_PORTAL_WEB_IMAGE` to
 a release tag rather than a moving branch tag.
@@ -457,19 +461,18 @@ ownership ledger and skips shared realms that are still in use.
 
 Back up:
 
-- `emobase-infra/.env`, `emobase-portal-deploy/.env` and every
-  `emobase-deploy-*/.env` (secrets)
-- `emobase-portal-deploy/data/public/` (version files, assembly images)
-- `emobase-deploy-*/data/`, `emobase-deploy-*/images/`
+- `infra/.env`, `portal/.env` and every `<species>/.env` (secrets)
+- `portal/data/public/` (version files, assembly images)
+- `<species>/data/`, `<species>/images/`
 - The local MySQL instance (portal genomics, Keycloak realms/users and every
   Directus database)
-- Elasticsearch data from the shared `emobase-infra` instance
+- Elasticsearch data from the shared `infra` stack
 - Directus uploads (`directus-data` volume per species)
 
 Example MySQL dump (host-level, outside the CLI):
 
 ```bash
-cd /srv/emobase/emobase-infra
+cd /srv/emobase/infra
 docker compose exec -T mysql \
   sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --all-databases' \
   > emobase-mysql-$(date +%F).sql
@@ -478,7 +481,7 @@ docker compose exec -T mysql \
 For Elasticsearch, use the snapshot procedure in the `emobase-infra` README.
 The instance listens on `127.0.0.1:9202` for administration and snapshots; it
 is not reachable from the LAN. Snapshots are written to
-`emobase-infra/es_bk/`.
+`infra/es_bk/`.
 
 ## Troubleshooting
 
@@ -547,7 +550,7 @@ Only do that if you can lose the data.
 `create` only scaffolds `.env`; it never starts containers. These are the values
 operators most often review or change.
 
-**`emobase-infra/.env`** — `KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_HOST_PORT`, the fixed
+**`infra/.env`** — `KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_HOST_PORT`, the fixed
 `KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak`, `ELASTICSEARCH_HOST_PORT`,
 `ELASTICSEARCH_JAVA_OPTS`, `ELASTICSEARCH_MEM_LIMIT`, the shared Docker network
 name, and the generated MySQL root and Keycloak admin passwords.
@@ -571,7 +574,7 @@ the `**.uni-goettingen.de` allowlist: start the dev server with
 | `PUBLIC_SERVER` | The URL users open for this species | e.g. `https://tcas.example.org` |
 | `PORTAL_SERVER` | Public portal URL used by browser links | the portal's `PUBLIC_SERVER` |
 | `PORTAL_INTERNAL_URL` | Portal URL inside containers | `http://host.docker.internal:<portal port>` for a local portal; unset for a remote portal |
-| `KEYCLOAK_PUBLIC_URL` | This server's Keycloak URL | from `emobase-infra/.env` |
+| `KEYCLOAK_PUBLIC_URL` | This server's Keycloak URL | from `infra/.env` |
 | `KEYCLOAK_REALM` | Joined realm or a dedicated species realm | e.g. `emobase-portal`, `emobase-tcas` |
 | `DIRECTUS_DB_DATABASE` | This species' database | e.g. `directus_tcas` |
 | `EMOBASE_ES_INDEX_PREFIX` | This species' slice of the shared Elasticsearch | e.g. `tcas`; must be unique and not `genomics` |
