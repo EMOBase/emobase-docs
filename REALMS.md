@@ -110,8 +110,7 @@ emobase doctor
 ```
 
 reports `realm.client_mismatch` or `realm.secret_mismatch` when two checkouts
-claim the same realm but use different credentials. `emobase env matrix` shows
-which checkout is authoritative for each shared key.
+claim the same realm but use different credentials.
 
 The CLI keeps a workspace ownership ledger at `<workspace>/.emobase/state.json`.
 It records which databases and realms were created by which checkout.
