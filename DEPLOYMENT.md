@@ -578,6 +578,7 @@ the `**.uni-goettingen.de` allowlist: start the dev server with
 | `KEYCLOAK_REALM` | Joined realm or a dedicated species realm | e.g. `emobase-portal`, `emobase-tcas` |
 | `DIRECTUS_DB_DATABASE` | This species' database | e.g. `directus_tcas` |
 | `EMOBASE_ES_INDEX_PREFIX` | This species' slice of the shared Elasticsearch | e.g. `tcas`; must be unique and not `genomics` |
+| `COMPOSE_FILE` | Compose files for this stack | `compose.yml`; Tcas adds `:compose.tcas.yml` |
 
 A checkout created before Elasticsearch was shared has no
 `EMOBASE_ES_INDEX_PREFIX`. Add `EMOBASE_ES_INDEX_PREFIX=<species>` and re-import
