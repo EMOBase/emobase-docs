@@ -34,10 +34,10 @@ A species can either join an existing realm or create a new one.
 
 ```bash
 # Join the portal realm: shared users and login
-emobase create species --species Tcas --keycloak-realm join:emobase-portal
+emobase create species Tcas --keycloak-realm join:emobase-portal
 
 # Create a dedicated realm
-emobase create species --species Tcas --keycloak-realm new:emobase-tcas
+emobase create species Tcas --keycloak-realm new:emobase-tcas
 ```
 
 `--realm` is an alias for `--keycloak-realm`. Without either flag,

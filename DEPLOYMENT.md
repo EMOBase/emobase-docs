@@ -174,7 +174,7 @@ mkdir -p ~/emobase && cd ~/emobase
 
 emobase create infra --local
 emobase create portal --local
-emobase create species --species Tcas --local
+emobase create species Tcas --local
 
 emobase bootstrap
 emobase status
@@ -186,7 +186,7 @@ What to expect:
   The container-facing Keycloak URL is fixed to `http://keycloak:8080/keycloak`.
 - `create portal --local` reads the Keycloak URLs and MySQL password from
   `../infra/.env` and creates the portal realm credentials.
-- `create species --species Tcas --local` copies the portal URL from the
+- `create species Tcas --local` copies the portal URL from the
   sibling portal checkout. `PORTAL_INTERNAL_URL` is derived as
   `http://host.docker.internal:9080`, so BLAST/SSR traffic stays internal.
   Docker Desktop provides `host.docker.internal`; on Linux the compose files
@@ -231,7 +231,7 @@ cd ~/emobase
 
 emobase create infra --keycloak-public-url http://192.168.1.10:8181/keycloak --force
 emobase create portal --public-server http://192.168.1.10:9080 --force
-emobase create species --species Tcas \
+emobase create species Tcas \
   --public-server http://192.168.1.10:9090 \
   --force
 
@@ -283,15 +283,14 @@ a new image is published.
 ### 3. Create the species
 
 ```bash
-emobase create species --species Tcas --public-server https://tcas.example.org
+emobase create species Tcas --public-server https://tcas.example.org
 ```
 
 Copies `PORTAL_SERVER` from the sibling portal checkout and derives
 `PORTAL_INTERNAL_URL`. On a species-only server, name the remote portal:
 
 ```bash
-emobase create species \
-  --species Tcas \
+emobase create species Tcas \
   --public-server https://tcas.example.org \
   --portal-server https://portal.example.org
 ```
@@ -343,8 +342,7 @@ Each species has its own checkout, `.env`, Directus database/data and
 containers. Give each stack a distinct HTTP port:
 
 ```bash
-emobase create species \
-  --species Dmel \
+emobase create species Dmel \
   --public-server https://dmel.example.org \
   --http-port 9091
 
