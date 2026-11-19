@@ -309,8 +309,10 @@ emobase bootstrap
 
 Runs infra → portal (JBrowse2 setup, migrations, shared realm, smoke test) →
 each species (Directus database, realm, initialise, start). `--dry-run` prints
-every command; `--only infra|portal|species`, `--no-pull`, `--skip-setup`,
-`--skip-migrations` and `--skip-smoke` narrow it.
+every command; `--only infra|portal|species|all|<stack>`, `--no-pull`,
+`--skip-setup`, `--skip-migrations` and `--skip-smoke` narrow it. A stack can
+be named by species code, checkout name or Compose project, for example
+`emobase bootstrap --only Tcas`.
 
 The portal migrations must run before the UI is used; without them the API
 returns `500`.
@@ -395,8 +397,9 @@ the stacks and (unless `--skip-smoke`) runs the portal smoke test. The order is
 infra → portal → species, because the portal may add database columns or API
 fields that the species UI expects.
 
-Useful flags: `--only infra|portal|species`, `--no-git`, `--skip-migrations`,
-`--skip-smoke`, `--dry-run`.
+Useful flags: `--only infra|portal|species|all|<stack>`, `--no-git`,
+`--skip-migrations`, `--skip-smoke`, `--dry-run`. For example,
+`emobase update --only Tcas` updates one species stack.
 
 A plain `up` does not re-pull a tag that already exists locally; `update` (or
 `up --pull`) does. To roll back, set the previous image tag in the relevant
